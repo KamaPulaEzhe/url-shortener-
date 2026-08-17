@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 	"urlshortener/errs"
@@ -16,6 +17,7 @@ import (
 	"urlshortener/storage"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 // func home(w http.ResponseWriter, r *http.Request) {
@@ -125,10 +127,18 @@ func (s *urlServer) deleteUrlHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
+	godotenv.Load()
 	mux := http.NewServeMux()
+
 	// server := NewUrlServer(storage.NewMemStorage())
+
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, "postgres://postgres:devpass@localhost:5433/urlshortener")
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL is not set")
+	}
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		log.Fatal("Unable to connect to database:", err)
 	}
