@@ -123,14 +123,21 @@ func (s *urlServer) deleteUrlHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-	fmt.Println("delete")
+}
+
+func newMux(server *urlServer) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /shorten/", server.setUrlHandler)
+	mux.HandleFunc("GET /{code}", server.getUrlHandler)
+	mux.HandleFunc("DELETE /{code}", server.deleteUrlHandler)
+
+	return mux
 }
 
 func main() {
 
 	godotenv.Load()
-	mux := http.NewServeMux()
-
+	// mux := http.NewServeMux()
 	// server := NewUrlServer(storage.NewMemStorage())
 
 	ctx := context.Background()
@@ -145,10 +152,7 @@ func main() {
 	defer pool.Close()
 
 	server := NewUrlServer(storage.NewPgStorage(pool))
-
-	mux.HandleFunc("POST /shorten/", server.setUrlHandler)
-	mux.HandleFunc("GET /{code}", server.getUrlHandler)
-	mux.HandleFunc("DELETE /{code}", server.deleteUrlHandler)
+	mux := newMux(server)
 
 	handler := middleware.PanicRecovery(mux)
 	handler = middleware.Logging(handler)

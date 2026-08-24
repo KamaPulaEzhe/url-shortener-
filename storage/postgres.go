@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
 	"urlshortener/errs"
 
 	"github.com/jackc/pgx/v5"
@@ -66,7 +65,6 @@ func (s *PgStorage) GetUrl(ctx context.Context, shortCode string) (string, error
 	var url urlForDb
 	err := s.db.QueryRow(ctx, "SELECT short_code, long_url FROM links WHERE short_code = $1", shortCode).Scan(&url.shortCode, &url.longCode)
 	if err != nil {
-		fmt.Println(err)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", errs.ErrCodeNotFound
 		} else {

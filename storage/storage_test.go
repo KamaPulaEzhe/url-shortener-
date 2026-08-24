@@ -1,77 +1,111 @@
 package storage
 
-// import (
-// 	"errors"
-// 	"testing"
-// 	errs "urlshortener/errs"
-// )
+import (
+	"context"
+	"errors"
+	"testing"
+	"urlshortener/errs"
 
-// // func Test_SGDUrl(t *testing.T) {
-// // 	s := NewStorage()
-// // 	shortUrl := "abc"
-// // 	expected := "https://proglib.io/p/samouchitel-po-go-dlya-nachinayushchih-chast-16-testirovanie-koda-i-ego-vidy-table-driven-podhod-parallelnye-testy-2024-09-03?ysclid=mr24u4xfjr191088381"
-// // 	s.SetUrl(shortUrl, expected)
-// // 	given, err := s.GetUrl(shortUrl)
-// // 	if errors.Is(err, errs.ErrNotFound) {
-// // 		t.Fatalf("does not exists")
-// // 	}
-// // 	if given != expected {
-// // 		t.Fatalf("given mismathes  expected")
-// // 	}
+	"github.com/google/go-cmp/cmp"
+)
 
-// // 	s.DeleteUrl(shortUrl)
-// // 	given, err = s.GetUrl(shortUrl)
-// // 	if errors.Is(err, errs.ErrNotFound) != true {
-// // 		t.Fatalf("delete failed")
-// // 	}
+func TestSetUrl(t *testing.T) {
+	s := NewMemStorage()
+	ctxEnd, cancel := context.WithTimeout(context.Background(), 0)
+	tests := map[string]struct {
+		ctx     context.Context
+		url     string
+		wantErr error
+	}{
+		"simple": {context.Background(), "https://youtube.com", nil},
+		"error1": {ctxEnd, "https://youtube.com", ctxEnd.Err()},
+	}
+	cancel()
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			shortCode, err := s.SetUrl(tc.ctx, tc.url)
+			diffLen := (len(shortCode) == 6)
+			diffErr := cmp.Diff(tc.wantErr, err)
+			if tc.wantErr != nil {
+				if diffErr != "" {
+					t.Fatalf("%s", diffErr)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if !diffLen {
+					t.Fatalf("%s", shortCode)
+				}
+			}
+		})
+	}
+}
 
-// // }
+func TestGetUrl(t *testing.T) {
+	s := NewMemStorage()
+	ctxEnd, cancel := context.WithTimeout(context.Background(), 0)
+	shortCode, _ := s.SetUrl(context.Background(), "https://youtube.com")
 
-// func TestStorage(t *testing.T) {
-// 	s := NewStorage()
-// 	tests := []struct {
-// 		name     string
-// 		shortUrl string
-// 		url      string
-// 		wantErr  bool
-// 	}{
-// 		{"set and get", "abc", "https://example.com", false},
-// 		{"not found", "xyz", "", true},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			if tt.url != "" {
-// 				s.SetUrl(tt.shortUrl, tt.url)
-// 			}
-// 			got, err := s.GetUrl(tt.shortUrl)
-// 			if tt.wantErr {
-// 				if !errors.Is(err, errs.ErrNotFound) {
-// 					t.Errorf("expected ErrNotFound, got %v", err)
-// 				}
-// 			} else {
-// 				if err != nil {
-// 					t.Fatalf("unexpected error: %v", err)
-// 				}
-// 				if got != tt.url {
-// 					t.Errorf("got %s, want %s", got, tt.url)
-// 				}
-// 			}
-// 		})
-// 	}
-// }
+	tests := map[string]struct {
+		ctx     context.Context
+		short   string
+		want    string
+		wantErr error
+	}{
+		"ctxEnd":   {ctxEnd, "mN0hP0", "", ctxEnd.Err()},
+		"okey":     {context.Background(), shortCode, "https://youtube.com", nil},
+		"notFound": {context.Background(), "ghjjgh", "", errs.ErrCodeNotFound},
+	}
+	cancel()
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			url, err := s.GetUrl(tc.ctx, tc.short)
+			diff := cmp.Diff(url, tc.want)
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("%s", err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if diff != "" {
+					t.Fatalf("%s", diff)
+				}
+			}
+		})
+	}
+}
 
-// // func fanIn(ch1, ch2 <-chan int) <-chan int {
-// // 	res := make(chan int)
-// // 	go func() {
-// // 		for {
-// // 			select {
-// // 			case v := <-ch1:
-// // 				res <- v
-// // 			case v := <-ch2:
-// // 				res <- v
-// // 			}
-// // 		}
-// // 	}()
+func TestDeleteUrl(t *testing.T) {
+	s := NewMemStorage()
+	ctxEnd, cancel := context.WithTimeout(context.Background(), 0)
+	shortCode, _ := s.SetUrl(context.Background(), "https://youtube.com")
 
-// // 	return res
-// // }
+	tests := map[string]struct {
+		ctx     context.Context
+		short   string
+		wantErr error
+	}{
+		"ctxEnd":   {ctxEnd, "mN0hP0", ctxEnd.Err()},
+		"okey":     {context.Background(), shortCode, nil},
+		"notFound": {context.Background(), "ghjjgh", errs.ErrURLNotFound},
+	}
+	cancel()
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := s.DeleteUrl(tc.ctx, tc.short)
+
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("%s", err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+			}
+		})
+	}
+}
