@@ -86,5 +86,3 @@ func (s *MemStorage) DeleteUrl(ctx context.Context, shortUrl string) error {
 	}
 
 }
-
-// func (s *MemStorage) Size() int { return int(s.len.Load()) }

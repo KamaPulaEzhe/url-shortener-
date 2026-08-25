@@ -88,5 +88,3 @@ func (s *PgStorage) DeleteUrl(ctx context.Context, shortUrl string) error {
 	}
 	return nil
 }
-
-// func (s *PgStorage) Size() int { return int(s.len.Load())}

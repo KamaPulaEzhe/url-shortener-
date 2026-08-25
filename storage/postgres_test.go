@@ -13,7 +13,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	godotenv.Load("../.env") // путь от storage/ до корня проекта
+	godotenv.Load("../.env")
 	os.Exit(m.Run())
 }
 
@@ -45,8 +45,6 @@ func TestPgStorage_SetUrl(t *testing.T) {
 	}{
 		"*okey*":              {context.Background(), "https://youtube.com", nil},
 		"*error ctx timeout*": {ctxEnd, "https://youtube.com", ctxEnd.Err()},
-		// "*error in QueryRow*": {ctxEnd, "https://youtube.com", ctxEnd.Err()},
-		// "*okey exists*": {context.Background(), "https://youtube.com", nil},
 	}
 	cancel()
 

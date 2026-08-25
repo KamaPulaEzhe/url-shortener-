@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 	"urlshortener/errs"
 	"urlshortener/middleware"
@@ -19,10 +21,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
-
-// func home(w http.ResponseWriter, r *http.Request) {
-// 	w.Write([]byte("URL shortener home page"))
-// }
 
 type Storage interface {
 	SetUrl(ctx context.Context, url string) (string, error)
@@ -51,9 +49,7 @@ func normalizeURL(raw string) (string, error) {
 }
 
 func (s *urlServer) getUrlHandler(w http.ResponseWriter, r *http.Request) {
-
 	short := strings.Replace(r.PathValue("code"), "\n", "", -1)
-	fmt.Println("--", short, "--")
 	if short == "" {
 		errs.WriteError(w, errs.ErrCodeNotFound)
 		fmt.Println(errs.ErrCodeNotFound.Error())
@@ -106,7 +102,6 @@ func (s *urlServer) setUrlHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *urlServer) deleteUrlHandler(w http.ResponseWriter, r *http.Request) {
 	short := strings.Replace(r.PathValue("code"), "\n", "", -1)
-	fmt.Println("--", short, "--")
 	if short == "" {
 		errs.WriteError(w, errs.ErrCodeNotFound)
 		fmt.Println(errs.ErrCodeNotFound.Error())
@@ -136,27 +131,42 @@ func newMux(server *urlServer) *http.ServeMux {
 
 func main() {
 
-	godotenv.Load()
-	// mux := http.NewServeMux()
-	// server := NewUrlServer(storage.NewMemStorage())
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
-	ctx := context.Background()
+	godotenv.Load()
+
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		log.Fatal("DATABASE_URL is not set")
 	}
-	pool, err := pgxpool.New(ctx, dsn)
+
+	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		log.Fatal("Unable to connect to database:", err)
 	}
 	defer pool.Close()
 
-	server := NewUrlServer(storage.NewPgStorage(pool))
-	mux := newMux(server)
+	serv := NewUrlServer(storage.NewPgStorage(pool))
+	mux := newMux(serv)
 
 	handler := middleware.PanicRecovery(mux)
 	handler = middleware.Logging(handler)
 
-	fmt.Println("Starting server at port 8080")
-	log.Fatal(http.ListenAndServe("localhost:8080", handler))
+	server := &http.Server{Addr: "localhost:8080", Handler: handler}
+
+	go func() {
+		fmt.Println("сервер слушает :8080")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Println("ошибка сервера:", err)
+		}
+	}()
+	<-ctx.Done()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		fmt.Println("не успели закрыться штатно:", err)
+	}
 }
