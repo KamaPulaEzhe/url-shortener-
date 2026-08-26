@@ -26,21 +26,15 @@ import (
 var rateLimit rate.Limit = 50
 var rateBurst int = 100
 
-type Storage interface {
-	SetUrl(ctx context.Context, url string) (string, error)
-	GetUrl(ctx context.Context, shortUrl string) (string, error)
-	DeleteUrl(ctx context.Context, shortUrl string) error
-}
-
 type urlServer struct {
-	store Storage
+	store storage.Storage
 }
 
 type urlBody struct {
 	Url string `json:"url"`
 }
 
-func NewUrlServer(store Storage) *urlServer {
+func NewUrlServer(store storage.Storage) *urlServer {
 	return &urlServer{store: store}
 }
 
@@ -151,7 +145,10 @@ func main() {
 	}
 	defer pool.Close()
 
-	serv := NewUrlServer(storage.NewPgStorage(pool))
+	cacheStorage := storage.NewCachedStorage(storage.NewPgStorage(pool))
+	cacheStorage.StartCleanup()
+
+	serv := NewUrlServer(cacheStorage)
 	mux := newMux(serv)
 
 	rateLimiter := middleware.NewIPRateLimiter(rateLimit, rateBurst)
