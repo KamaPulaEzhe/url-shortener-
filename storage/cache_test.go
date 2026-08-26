@@ -9,8 +9,6 @@ import (
 	"urlshortener/errs"
 )
 
-// countingStorage оборачивает Storage и считает вызовы GetUrl —
-// нужен, чтобы доказать, что попадание в кэш реально не идёт в backend.
 type countingStorage struct {
 	Storage
 	getCalls int
