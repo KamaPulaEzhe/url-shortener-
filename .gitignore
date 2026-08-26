@@ -6,3 +6,6 @@
 
 # local secrets
 .env
+
+# OS
+.DS_Store

@@ -20,7 +20,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"golang.org/x/time/rate"
 )
+
+var rateLimit rate.Limit = 50
+var rateBurst int = 100
 
 type Storage interface {
 	SetUrl(ctx context.Context, url string) (string, error)
@@ -150,7 +154,11 @@ func main() {
 	serv := NewUrlServer(storage.NewPgStorage(pool))
 	mux := newMux(serv)
 
-	handler := middleware.PanicRecovery(mux)
+	rateLimiter := middleware.NewIPRateLimiter(rateLimit, rateBurst)
+	rateLimiter.StartCleanUp()
+
+	handler := rateLimiter.RateLimit(mux)
+	handler = middleware.PanicRecovery(handler)
 	handler = middleware.Logging(handler)
 
 	server := &http.Server{Addr: "localhost:8080", Handler: handler}
