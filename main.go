@@ -158,7 +158,7 @@ func main() {
 	handler = middleware.PanicRecovery(handler)
 	handler = middleware.Logging(handler)
 
-	server := &http.Server{Addr: "localhost:8080", Handler: handler}
+	server := &http.Server{Addr: "0.0.0.0:8080", Handler: handler}
 
 	go func() {
 		fmt.Println("сервер слушает :8080")
