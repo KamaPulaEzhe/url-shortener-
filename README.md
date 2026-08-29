@@ -1,5 +1,7 @@
 # urlshortener
 
+![Go](https://github.com/KamaPulaEzhe/url-shortener-/actions/workflows/go.yml/badge.svg)
+
 Небольшой сократитель ссылок на Go — учебный проект: настоящее HTTP API поверх Postgres, с контекстами и таймаутами в хранилище, graceful shutdown и приличным набором тестов под капотом.
 
 Отправляешь длинную ссылку — получаешь короткий код. Переходишь по короткому коду — тебя редиректит на оригинал.
@@ -16,6 +18,7 @@
 - **Middleware**: логирование запросов, recovery от паник, rate limiting
 - **Тесты везде**: юнит (все три реализации `Storage`), HTTP-хендлеры через `httptest`, интеграционные — на реальном Postgres
 - **Docker** — multi-stage `Dockerfile` (сборка на `golang`, финальный образ на `distroless`) и `docker-compose.yaml`, поднимающий приложение и Postgres одной командой
+- **CI** — GitHub Actions (`.github/workflows/go.yml`): сборка, `go vet`, тесты с `-race` на реальном Postgres при каждом пуше
 - Конфигурация через `.env`, без секретов в коде
 
 ## Эндпоинты
